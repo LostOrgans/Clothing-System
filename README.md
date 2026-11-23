@@ -6,7 +6,10 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 ## What v1 does
 
 - Renders a realistic parametric human with Filament.
-- Sliders are generated at runtime from the model's 24 glTF morph targets.
+- Sliders are generated at runtime from the model's 24 glTF morph targets. `*_min`/`*_max`
+  pairs are combined into one slider per body dimension (0.5 = neutral).
+- An "Enter measurements" panel maps height, weight, chest, waist and hips to body shape;
+  results are approximate and can be refined with the sliders.
 - One-finger drag orbits, pinch zooms.
 - Slider values persist across restarts (DataStore).
 
@@ -70,7 +73,7 @@ with the Blender command above when the mesh changes.
 
 ## Next milestones (not started)
 
-1. Skin tone and preset body types
+1. MakeHuman CC0 skin textures and more region targets
 2. Photo-based face, then photo-derived body
 3. Wardrobe item CRUD (photos + tags)
 4. Clothing layered onto the avatar
