@@ -5,8 +5,8 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 
 ## What v1 does
 
-- Renders a stylized low-poly mannequin with Filament.
-- Three sliders reshape it live via glTF morph targets: slimness, height, muscle.
+- Renders a realistic parametric human with Filament.
+- Sliders are generated at runtime from the model's 24 glTF morph targets.
 - One-finger drag orbits, pinch zooms.
 - Slider values persist across restarts (DataStore).
 
@@ -26,14 +26,17 @@ targets; sliders set their weights through `RenderableManager.setMorphWeights`.
 
 ## Build and run
 
-1. Generate the avatar model:
+1. Generate the avatar model. Install Blender 4.2+ and MPFB 2 as a Blender extension
+   (from https://extensions.blender.org/add-ons/mpfb/), then:
 
    ```bash
    blender --background --python tools/make_avatar.py
    ```
 
-   This writes `app/src/main/assets/models/avatar.glb`. It is a generated file: edit the
-   script, not the output.
+   This writes `app/src/main/assets/models/avatar.glb`, a realistic human with 24 named
+   morph targets covering gender, age, muscle, weight, proportions, height, cupsize and
+   firmness plus MPFB detail targets. The app reads the target names from the GLB and
+   creates one slider per target — no hard-coded slider list. MakeHuman assets are CC0.
 
 2. Open the repository root in Android Studio. Let it download Gradle and the SDK.
    If there is no wrapper, use **File > New > New Project > Import** or run

@@ -4,8 +4,8 @@
 
 ## 1. Project profile
 
-A digital wardrobe app. The current milestone is an Android-only avatar creator: a
-stylized 3D mannequin that the user reshapes with sliders.
+A digital wardrobe app. The current milestone is an Android-only avatar creator based on
+a realistic parametric human (MPFB 2 / MakeHuman) with runtime-generated morph sliders.
 
 - Toolchain: Android Studio, JDK 17, Gradle 8.9, AGP 8.7.3, Kotlin 2.0.21
 - Languages: Kotlin, Python (Blender mesh generator)
@@ -65,9 +65,10 @@ Source: `README.md`, `build.gradle.kts`, `gradle/libs.versions.toml`.
 ./gradlew :app:testDebugUnitTest :app:assembleDebug
 ```
 
-The agent environment has no JDK, Gradle, or Android SDK, so these commands cannot be run
-here. Report them as "not run in this environment" rather than claiming a pass.
-A Python syntax check of `tools/make_avatar.py` does run here.
+The build toolchain is installed under `~/.local/tools`. Set `JAVA_HOME` to the Temurin
+17 JDK, `ANDROID_HOME` to `~/.local/tools/android`, and put `~/.local/tools/gradle-8.9/bin`
+on `PATH` before running these commands. Blender 4.5 and MPFB 2 are installed locally for
+regenerating the model.
 
 - Narrowest check while iterating; full gate before push.
 - Never bypass with skipped tests, disabled lint, or lowered thresholds.

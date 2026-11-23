@@ -1,17 +1,22 @@
 package com.example.clothingsystem.avatar
 
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertEquals
 
 class AvatarConfigTest {
     @Test
-    fun weightsMatchShapeKeyOrder() {
-        assertContentEquals(floatArrayOf(0.2f, 0.7f, 1f), AvatarConfig(0.2f, 0.7f, 1f).morphWeights())
+    fun serialiseRoundTripsMorphWeights() {
+        val config = AvatarConfig().with("height_max", 0.75f).with("weight_min", 0.25f)
+        assertEquals(config, AvatarConfig.deserialise(config.serialise()))
     }
 
     @Test
-    fun rejectsOutOfRangeWeight() {
-        assertFailsWith<IllegalArgumentException> { AvatarConfig(slim = 1.2f) }
+    fun missingWeightFallsBackToDefault() {
+        assertEquals(0.4f, AvatarConfig().weight("age_max", 0.4f))
+    }
+
+    @Test
+    fun ignoresMalformedEntries() {
+        assertEquals(emptyMap(), AvatarConfig.deserialise("broken;also_broken").weights)
     }
 }
