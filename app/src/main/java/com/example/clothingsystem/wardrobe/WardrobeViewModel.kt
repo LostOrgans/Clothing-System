@@ -12,7 +12,6 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
     private val store = WardrobeStore(application)
     private val _items = MutableStateFlow<List<ClothingItem>>(emptyList())
     val items: StateFlow<List<ClothingItem>> = _items
-
     init {
         viewModelScope.launch { _items.value = store.load() }
     }
