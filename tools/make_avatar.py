@@ -12,6 +12,7 @@ import importlib
 import sys
 from pathlib import Path
 
+import bmesh
 import bpy
 
 
@@ -93,6 +94,27 @@ def build_shape_keys(obj):
     TargetService.reapply_macro_details(obj)
 
 
+def strip_helper_geometry(obj):
+    """MPFB's basemesh includes fitting helpers (hair, skirt, tights, ...). Keep only the body."""
+    body = obj.vertex_groups.get("body")
+    if body is None:
+        raise RuntimeError("MPFB basemesh has no 'body' vertex group")
+    keep = set()
+    for vertex in obj.data.vertices:
+        if any(group.group == body.index for group in vertex.groups):
+            keep.add(vertex.index)
+
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    mesh.verts.ensure_lookup_table()
+    remove = [vertex for vertex in mesh.verts if vertex.index not in keep]
+    bmesh.ops.delete(mesh, geom=remove, context="VERTS")
+    mesh.to_mesh(obj.data)
+    mesh.free()
+    obj.data.update()
+    return len(keep)
+
+
 def main():
     global HumanService, TargetService, HumanObjectProperties
     enable_mpfb()
@@ -113,6 +135,8 @@ def main():
     human.data.materials.append(skin)
 
     build_shape_keys(human)
+    kept = strip_helper_geometry(human)
+    print(f"Kept {kept} body vertices")
 
     output = Path(__file__).resolve().parents[1] / "app/src/main/assets/models/avatar.glb"
     output.parent.mkdir(parents=True, exist_ok=True)
