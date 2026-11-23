@@ -2,6 +2,7 @@ package com.example.clothingsystem.ui
 
 import android.view.Choreographer
 import android.view.SurfaceView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,7 +50,7 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
     latestConfig.value = config
     val model = remember { mutableStateOf<AvatarModel?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF20242B))) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
