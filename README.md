@@ -8,6 +8,7 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 - Renders a realistic parametric human with Filament.
 - Sliders are generated at runtime from the model's 24 glTF morph targets. `*_min`/`*_max`
   pairs are combined into one slider per body dimension (0.5 = neutral).
+- Six skin-tone presets change the mannequin's base colour live.
 - An "Enter measurements" panel maps height, weight, chest, waist and hips to body shape;
   results are approximate and can be refined with the sliders.
 - One-finger drag orbits, pinch zooms.

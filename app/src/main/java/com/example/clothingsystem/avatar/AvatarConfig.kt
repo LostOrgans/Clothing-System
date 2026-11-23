@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.first
 
 private val Context.avatarDataStore: DataStore<Preferences> by preferencesDataStore(name = "avatar")
 
-data class AvatarConfig(val weights: Map<String, Float> = emptyMap()) {
+data class AvatarConfig(
+    val weights: Map<String, Float> = emptyMap(),
+    val skinTone: SkinTone = SkinTone.MEDIUM,
+) {
     fun weight(name: String, default: Float): Float = weights[name] ?: default
 
     fun with(name: String, value: Float): AvatarConfig = copy(weights = weights + (name to value))
@@ -27,14 +30,21 @@ data class AvatarConfig(val weights: Map<String, Float> = emptyMap()) {
 
         object Prefs {
             private val key = stringPreferencesKey("morph_weights")
+            private val skinKey = stringPreferencesKey("skin_tone")
 
             suspend fun read(context: Context): AvatarConfig {
                 val prefs = context.avatarDataStore.data.first()
-                return deserialise(prefs[key] ?: "")
+                return AvatarConfig(
+                    weights = deserialise(prefs[key] ?: "").weights,
+                    skinTone = SkinTone.fromName(prefs[skinKey]),
+                )
             }
 
             suspend fun write(context: Context, config: AvatarConfig) {
-                context.avatarDataStore.edit { prefs -> prefs[key] = config.serialise() }
+                context.avatarDataStore.edit { prefs ->
+                    prefs[key] = config.serialise()
+                    prefs[skinKey] = config.skinTone.name
+                }
             }
         }
     }

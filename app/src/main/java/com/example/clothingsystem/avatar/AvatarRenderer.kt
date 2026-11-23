@@ -63,6 +63,21 @@ object AvatarRenderer {
         return AvatarModel(emptyList(), floatArrayOf())
     }
 
+    fun applySkinTone(viewer: ModelViewer, tone: SkinTone) {
+        val asset = viewer.asset ?: return
+        val renderables = viewer.engine.renderableManager
+        for (entity in asset.entities) {
+            if (!renderables.hasComponent(entity)) continue
+            val instance = renderables.getInstance(entity)
+            for (primitive in 0 until renderables.getPrimitiveCount(instance)) {
+                val material = renderables.getMaterialInstanceAt(instance, primitive) ?: continue
+                runCatching {
+                    material.setParameter("baseColorFactor", tone.r, tone.g, tone.b)
+                }
+            }
+        }
+    }
+
     fun applyWeights(viewer: ModelViewer, model: AvatarModel, config: AvatarConfig) {
         val asset = viewer.asset ?: return
         val renderables = viewer.engine.renderableManager

@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -36,6 +39,7 @@ import com.example.clothingsystem.avatar.AvatarViewModel
 import com.example.clothingsystem.avatar.Measurements
 import com.example.clothingsystem.avatar.MorphControl
 import com.example.clothingsystem.avatar.MorphMapping
+import com.example.clothingsystem.avatar.SkinTone
 import com.google.android.filament.utils.ModelViewer
 
 private data class FrameHandle(
@@ -65,7 +69,10 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                         val callback = object : Choreographer.FrameCallback {
                             override fun doFrame(frameTimeNanos: Long) {
                                 choreographer.postFrameCallback(this)
-                                model.value?.let { AvatarRenderer.applyWeights(viewer, it, latestConfig.value) }
+                                model.value?.let {
+                                    AvatarRenderer.applyWeights(viewer, it, latestConfig.value)
+                                    AvatarRenderer.applySkinTone(viewer, latestConfig.value.skinTone)
+                                }
                                 viewer.render(frameTimeNanos)
                             }
                         }
@@ -98,6 +105,16 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
             if (current != null) {
                 val defaults = current.morphNames.zip(current.defaultWeights.toTypedArray()).toMap()
                 val controls = MorphMapping.controls(current.morphNames)
+                Text("Skin tone", color = Color.White, modifier = Modifier.padding(start = 24.dp, top = 8.dp))
+                Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) {
+                    for (tone in SkinTone.entries) {
+                        Button(
+                            onClick = { viewModel.setSkinTone(tone) },
+                            modifier = Modifier.size(48.dp).padding(end = 6.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(tone.hex)),
+                        ) {}
+                    }
+                }
                 for (control in controls) {
                     val value = MorphMapping.value(control, config.weights, defaults)
                     MorphSlider(control, value) { viewModel.setWeights(MorphMapping.weights(control, it)) }
