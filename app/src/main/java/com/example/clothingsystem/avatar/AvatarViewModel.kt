@@ -17,7 +17,7 @@ class AvatarViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun setWeight(name: String, value: Float) = update { it.with(name, value) }
+    fun setWeights(weights: Map<String, Float>) = update { old -> old.copy(weights = old.weights + weights) }
     fun reset() = update { AvatarConfig() }
 
     private fun update(transform: (AvatarConfig) -> AvatarConfig) {

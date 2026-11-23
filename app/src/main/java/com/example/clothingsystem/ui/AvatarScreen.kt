@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,21 +33,15 @@ import com.example.clothingsystem.R
 import com.example.clothingsystem.avatar.AvatarModel
 import com.example.clothingsystem.avatar.AvatarRenderer
 import com.example.clothingsystem.avatar.AvatarViewModel
+import com.example.clothingsystem.avatar.Measurements
+import com.example.clothingsystem.avatar.MorphControl
+import com.example.clothingsystem.avatar.MorphMapping
 import com.google.android.filament.utils.ModelViewer
 
 private data class FrameHandle(
     val choreographer: Choreographer,
     val callback: Choreographer.FrameCallback,
 )
-
-private fun labelFor(name: String): String = name
-    .replace("\$md-", "")
-    .replace("_min", " (low)")
-    .replace("_max", " (high)")
-    .replace('-', ' ')
-    .replace('$', ' ')
-    .trim()
-    .replaceFirstChar { it.uppercase() }
 
 @Composable
 fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
@@ -98,16 +96,21 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
         Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
             val current = model.value
             if (current != null) {
-                for (index in current.morphNames.indices) {
-                    val name = current.morphNames[index]
-                    val value = config.weight(name, current.defaultWeights.getOrNull(index) ?: 0f)
-                    Text(text = labelFor(name), color = Color.White, modifier = Modifier.padding(start = 24.dp, top = 8.dp, end = 24.dp))
-                    Slider(
-                        value = value,
-                        onValueChange = { viewModel.setWeight(name, it) },
-                        valueRange = 0f..1f,
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                    )
+                val defaults = current.morphNames.zip(current.defaultWeights.toTypedArray()).toMap()
+                val controls = MorphMapping.controls(current.morphNames)
+                for (control in controls) {
+                    val value = MorphMapping.value(control, config.weights, defaults)
+                    MorphSlider(control, value) { viewModel.setWeights(MorphMapping.weights(control, it)) }
+                }
+                MeasurementsPanel { measurements ->
+                    val mapped: Map<String, Float> = measurements.toControlValues().entries
+                        .flatMap { entry ->
+                            val control = controls.firstOrNull { it.key == entry.key }
+                            if (control != null) MorphMapping.weights(control, entry.value).entries
+                            else emptySet<Map.Entry<String, Float>>()
+                        }
+                        .associate { it.key to it.value }
+                    viewModel.setWeights(mapped)
                 }
             }
             TextButton(
@@ -117,5 +120,66 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                 Text(text = "Reset", color = Color.White)
             }
         }
+    }
+}
+
+@Composable
+private fun MorphSlider(control: MorphControl, value: Float, onChange: (Float) -> Unit) {
+    Text(
+        text = control.label,
+        color = Color.White,
+        modifier = Modifier.padding(start = 24.dp, top = 8.dp, end = 24.dp),
+    )
+    Slider(
+        value = value,
+        onValueChange = onChange,
+        valueRange = 0f..1f,
+        modifier = Modifier.padding(horizontal = 24.dp),
+    )
+}
+
+@Composable
+private fun MeasurementsPanel(onApply: (Measurements) -> Unit) {
+    val expanded = remember { mutableStateOf(false) }
+    val fields = listOf("Height (cm)", "Weight (kg)", "Chest (cm)", "Waist (cm)", "Hips (cm)")
+    val values = remember { mutableStateOf(List(5) { "" }) }
+
+    TextButton(onClick = { expanded.value = !expanded.value }, modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(text = if (expanded.value) "Hide measurements" else "Enter measurements", color = Color.White)
+    }
+    if (expanded.value) {
+        fields.forEachIndexed { index, label ->
+            OutlinedTextField(
+                value = values.value[index],
+                onValueChange = { input ->
+                    values.value = values.value.toMutableList().also { it[index] = input }
+                },
+                label = { Text(label) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+            )
+        }
+        Button(
+            onClick = {
+                val numbers = values.value.map { it.toFloatOrNull() }
+                if (numbers.all { it != null }) {
+                    onApply(
+                        Measurements(
+                            heightCm = numbers[0]!!, weightKg = numbers[1]!!,
+                            chestCm = numbers[2]!!, waistCm = numbers[3]!!, hipsCm = numbers[4]!!,
+                        ),
+                    )
+                }
+            },
+            modifier = Modifier.padding(start = 24.dp, top = 8.dp),
+        ) {
+            Text("Apply measurements")
+        }
+        Text(
+            text = "Approximate: height, weight and proportions are mapped to body shape. Refine with the sliders above.",
+            color = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
     }
 }

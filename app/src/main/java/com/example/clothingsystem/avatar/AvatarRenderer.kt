@@ -13,8 +13,15 @@ data class AvatarModel(val morphNames: List<String>, val defaultWeights: FloatAr
 object AvatarRenderer {
     private const val MODEL_PATH = "models/avatar.glb"
 
+    init {
+        System.loadLibrary("filament-jni")
+        System.loadLibrary("gltfio-jni")
+        System.loadLibrary("filament-utils-jni")
+    }
+
     fun configure(viewer: ModelViewer) {
         viewer.view.blendMode = View.BlendMode.TRANSLUCENT
+        viewer.cameraFocalLength = 50f
         viewer.scene.indirectLight = IndirectLight.Builder()
             .irradiance(1, floatArrayOf(0.7f, 0.7f, 0.7f))
             .build(viewer.engine)

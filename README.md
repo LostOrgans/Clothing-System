@@ -6,7 +6,10 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 ## What v1 does
 
 - Renders a realistic parametric human with Filament.
-- Sliders are generated at runtime from the model's 24 glTF morph targets.
+- Sliders are generated at runtime from the model's 24 glTF morph targets. `*_min`/`*_max`
+  pairs are combined into one slider per body dimension (0.5 = neutral).
+- An "Enter measurements" panel maps height, weight, chest, waist and hips to body shape;
+  results are approximate and can be refined with the sliders.
 - One-finger drag orbits, pinch zooms.
 - Slider values persist across restarts (DataStore).
 
@@ -56,8 +59,12 @@ gradle :app:testDebugUnitTest :app:assembleDebug   # full gate
 ## CI / APK
 
 `.github/workflows/build-apk.yml` runs the full gate on pushes to `main`, pull requests,
-and manual dispatch. It uses JDK 17 + Android SDK 35, builds `:app:assembleDebug`, and
-uploads `app-debug.apk` as a workflow artifact. Download it from the Actions run page.
+and manual dispatch. It uses JDK 17 + Gradle 8.9 + Android SDK 35, builds a signed
+`app-release.apk`, and uploads it as a workflow artifact.
+
+On pushes to `main` (not pull requests) it also publishes a rolling **`latest` GitHub
+Release** with the signed APK attached:
+https://github.com/LostOrgans/Clothing-System/releases/tag/latest
 
 The generated `avatar.glb` is committed so CI can bundle it into the APK. Regenerate it
 with the Blender command above when the mesh changes.
@@ -70,7 +77,7 @@ with the Blender command above when the mesh changes.
 
 ## Next milestones (not started)
 
-1. Skin tone and preset body types
+1. MakeHuman CC0 skin textures and more region targets
 2. Photo-based face, then photo-derived body
 3. Wardrobe item CRUD (photos + tags)
 4. Clothing layered onto the avatar

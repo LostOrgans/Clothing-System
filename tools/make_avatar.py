@@ -103,6 +103,15 @@ def main():
     human = HumanService.create_human()
     human.name = "Avatar"
 
+    skin = bpy.data.materials.new("Skin")
+    skin.use_nodes = True
+    principled = skin.node_tree.nodes.get("Principled BSDF")
+    principled.inputs["Base Color"].default_value = (0.76, 0.59, 0.48, 1.0)
+    principled.inputs["Roughness"].default_value = 0.82
+    principled.inputs["Metallic"].default_value = 0.0
+    human.data.materials.clear()
+    human.data.materials.append(skin)
+
     build_shape_keys(human)
 
     output = Path(__file__).resolve().parents[1] / "app/src/main/assets/models/avatar.glb"
