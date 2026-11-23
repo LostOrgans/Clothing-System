@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.ClothingSystem" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
