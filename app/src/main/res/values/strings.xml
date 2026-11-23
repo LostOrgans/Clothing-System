@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Clothing System</string>
+    <string name="avatar_hint">Drag to rotate · Pinch to zoom</string>
+    <string name="avatar_missing">Avatar model not found. Run tools/make_avatar.py in Blender, then rebuild.</string>
+</resources>
