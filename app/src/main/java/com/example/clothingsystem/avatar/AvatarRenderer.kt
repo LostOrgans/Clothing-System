@@ -63,7 +63,7 @@ object AvatarRenderer {
         return AvatarModel(emptyList(), floatArrayOf())
     }
 
-    fun applySkinTone(viewer: ModelViewer, tone: SkinTone) {
+    fun applyAppearance(viewer: ModelViewer, config: AvatarConfig) {
         val asset = viewer.asset ?: return
         val renderables = viewer.engine.renderableManager
         for (entity in asset.entities) {
@@ -71,32 +71,13 @@ object AvatarRenderer {
             val instance = renderables.getInstance(entity)
             for (primitive in 0 until renderables.getPrimitiveCount(instance)) {
                 val material = renderables.getMaterialInstanceAt(instance, primitive) ?: continue
-                runCatching {
-                    material.setParameter("baseColorFactor", tone.r, tone.g, tone.b)
+                val name = runCatching { material.name }.getOrDefault("")
+                if (name.contains("body", ignoreCase = true) || name == "Skin") {
+                    val tone = config.skinTone
+                    runCatching { material.setParameter("baseColorFactor", tone.r, tone.g, tone.b) }
                 }
             }
         }
-    }
-
-    fun applyAppearance(viewer: ModelViewer, config: AvatarConfig) {
-        val asset = viewer.asset ?: return
-        val renderables = viewer.engine.renderableManager
-
-        fun colour(node: String, color: AppearanceColor) {
-            val entity = asset.getFirstEntityByName(node)
-            if (entity == 0 || !renderables.hasComponent(entity)) return
-            val instance = renderables.getInstance(entity)
-            for (primitive in 0 until renderables.getPrimitiveCount(instance)) {
-                val material = renderables.getMaterialInstanceAt(instance, primitive) ?: continue
-                runCatching { material.setParameter("baseColorFactor", color.r, color.g, color.b) }
-            }
-        }
-
-        colour("Hair", config.hairColor)
-        colour("Eye_L", config.eyeColor)
-        colour("Eye_R", config.eyeColor)
-        colour("Nipple_L", config.nippleColor)
-        colour("Nipple_R", config.nippleColor)
     }
 
     fun applyWeights(viewer: ModelViewer, model: AvatarModel, config: AvatarConfig) {

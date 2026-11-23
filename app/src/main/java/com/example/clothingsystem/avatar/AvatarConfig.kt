@@ -13,9 +13,6 @@ private val Context.avatarDataStore: DataStore<Preferences> by preferencesDataSt
 data class AvatarConfig(
     val weights: Map<String, Float> = emptyMap(),
     val skinTone: SkinTone = SkinTone.MEDIUM,
-    val hairColor: AppearanceColor = AppearanceColors.HAIR[0],
-    val eyeColor: AppearanceColor = AppearanceColors.EYE[1],
-    val nippleColor: AppearanceColor = AppearanceColors.NIPPLE[1],
 ) {
     fun weight(name: String, default: Float): Float = weights[name] ?: default
 
@@ -34,18 +31,12 @@ data class AvatarConfig(
         object Prefs {
             private val key = stringPreferencesKey("morph_weights")
             private val skinKey = stringPreferencesKey("skin_tone")
-            private val hairKey = stringPreferencesKey("hair_color")
-            private val eyeKey = stringPreferencesKey("eye_color")
-            private val nippleKey = stringPreferencesKey("nipple_color")
 
             suspend fun read(context: Context): AvatarConfig {
                 val prefs = context.avatarDataStore.data.first()
                 return AvatarConfig(
                     weights = deserialise(prefs[key] ?: "").weights,
                     skinTone = SkinTone.fromName(prefs[skinKey]),
-                    hairColor = AppearanceColors.hair(prefs[hairKey]),
-                    eyeColor = AppearanceColors.eye(prefs[eyeKey]),
-                    nippleColor = AppearanceColors.nipple(prefs[nippleKey]),
                 )
             }
 
@@ -53,9 +44,6 @@ data class AvatarConfig(
                 context.avatarDataStore.edit { prefs ->
                     prefs[key] = config.serialise()
                     prefs[skinKey] = config.skinTone.name
-                    prefs[hairKey] = config.hairColor.label
-                    prefs[eyeKey] = config.eyeColor.label
-                    prefs[nippleKey] = config.nippleColor.label
                 }
             }
         }
