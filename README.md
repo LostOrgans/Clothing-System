@@ -46,12 +46,18 @@ If the model has not been generated, the app shows a message instead of crashing
 ## Checks
 
 ```bash
-./gradlew :app:compileDebugKotlin          # fast loop
-./gradlew :app:testDebugUnitTest :app:assembleDebug   # full gate
+gradle :app:compileDebugKotlin          # fast loop
+gradle :app:testDebugUnitTest :app:assembleDebug   # full gate
 ```
 
-The agent environment that created this project has no JDK/Gradle/Android SDK, so these
-checks have not been run here. Run them in Android Studio.
+## CI / APK
+
+`.github/workflows/build-apk.yml` runs the full gate on pushes to `main`, pull requests,
+and manual dispatch. It uses JDK 17 + Android SDK 35, builds `:app:assembleDebug`, and
+uploads `app-debug.apk` as a workflow artifact. Download it from the Actions run page.
+
+The generated `avatar.glb` is committed so CI can bundle it into the APK. Regenerate it
+with the Blender command above when the mesh changes.
 
 ## Controls
 
