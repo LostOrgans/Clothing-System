@@ -75,17 +75,31 @@ data class Measurements(
     val firmness: Float = 5f,
 ) {
     fun toControlValues(): Map<String, Float> {
+        // MorphMapping.weights() treats 0.5 as neutral, so every metric must be centred on
+        // its reference value. Previously raw 0..1 values were passed straight through, which
+        // pushed even the default body hard toward the "_min" morphs.
+        fun control(value: Float, min: Float, max: Float, reference: Float, range: Float): Float {
+            val normalized = ((value - min) / (max - min)).coerceIn(0f, 1f)
+            val referenceNormalized = (reference - min) / (max - min)
+            return (0.5f + (normalized - referenceNormalized) * range).coerceIn(0f, 1f)
+        }
         fun norm(value: Float, min: Float, max: Float) = ((value - min) / (max - min)).coerceIn(0f, 1f)
-        // Kept deliberately moderate: hair, eyes and nipples are separate meshes and do not
-        // follow extreme body morphs, so full-range targets would detach them.
+        fun blend(a: Float, b: Float) = a * 0.75f + b * 0.25f
+
         return mapOf(
-            "height" to norm(heightCm, 140f, 210f) * 0.35f,
-            "weight" to (norm(weightKg, 40f, 150f) * 0.75f + norm(waistCm, 55f, 140f) * 0.25f) * 0.5f,
-            "cupsize" to norm(chestCm, 70f, 130f) * 0.5f,
-            "proportions" to (norm(hipsCm, 75f, 150f) * 0.6f + norm(shoulderCm, 35f, 55f) * 0.4f) * 0.5f,
-            "muscle" to norm(muscleTone, 0f, 10f) * 0.4f,
-            "age" to norm(ageYears, 5f, 90f) * 0.5f,
-            "firmness" to norm(firmness, 0f, 10f) * 0.4f,
+            "height" to control(heightCm, 140f, 210f, 170f, 0.35f),
+            "weight" to control(
+                blend(norm(weightKg, 40f, 150f), norm(waistCm, 55f, 140f)),
+                0f, 1f, blend(norm(70f, 40f, 150f), norm(85f, 55f, 140f)), 0.5f,
+            ),
+            "cupsize" to control(chestCm, 70f, 130f, 95f, 0.5f),
+            "proportions" to control(
+                blend(norm(hipsCm, 75f, 150f), norm(shoulderCm, 35f, 55f)),
+                0f, 1f, blend(norm(98f, 75f, 150f), norm(44f, 35f, 55f)), 0.5f,
+            ),
+            "muscle" to control(muscleTone, 0f, 10f, 5f, 0.4f),
+            "age" to control(ageYears, 5f, 90f, 30f, 0.5f),
+            "firmness" to control(firmness, 0f, 10f, 5f, 0.4f),
         )
     }
 
