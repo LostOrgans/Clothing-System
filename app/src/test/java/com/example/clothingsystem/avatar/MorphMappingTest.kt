@@ -35,7 +35,7 @@ class MorphMappingTest {
     @Test
     fun measurementsMapWithinRange() {
         val values = Measurements(heightCm = 210f, weightKg = 40f).toControlValues()
-        assertEquals(1f, values["height"])
+        assertEquals(0.35f, values["height"])
         assertTrue(values.getValue("weight") in 0f..0.2f)
         assertTrue(values.getValue("proportions") in 0f..1f)
     }

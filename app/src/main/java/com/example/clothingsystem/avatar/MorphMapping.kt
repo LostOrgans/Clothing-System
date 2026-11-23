@@ -76,14 +76,16 @@ data class Measurements(
 ) {
     fun toControlValues(): Map<String, Float> {
         fun norm(value: Float, min: Float, max: Float) = ((value - min) / (max - min)).coerceIn(0f, 1f)
+        // Kept deliberately moderate: hair, eyes and nipples are separate meshes and do not
+        // follow extreme body morphs, so full-range targets would detach them.
         return mapOf(
-            "height" to norm(heightCm, 140f, 210f),
-            "weight" to (norm(weightKg, 40f, 150f) * 0.75f + norm(waistCm, 55f, 140f) * 0.25f),
-            "cupsize" to norm(chestCm, 70f, 130f),
-            "proportions" to (norm(hipsCm, 75f, 150f) * 0.6f + norm(shoulderCm, 35f, 55f) * 0.4f),
-            "muscle" to norm(muscleTone, 0f, 10f),
-            "age" to norm(ageYears, 5f, 90f),
-            "firmness" to norm(firmness, 0f, 10f),
+            "height" to norm(heightCm, 140f, 210f) * 0.35f,
+            "weight" to (norm(weightKg, 40f, 150f) * 0.75f + norm(waistCm, 55f, 140f) * 0.25f) * 0.5f,
+            "cupsize" to norm(chestCm, 70f, 130f) * 0.5f,
+            "proportions" to (norm(hipsCm, 75f, 150f) * 0.6f + norm(shoulderCm, 35f, 55f) * 0.4f) * 0.5f,
+            "muscle" to norm(muscleTone, 0f, 10f) * 0.4f,
+            "age" to norm(ageYears, 5f, 90f) * 0.5f,
+            "firmness" to norm(firmness, 0f, 10f) * 0.4f,
         )
     }
 

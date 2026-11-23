@@ -53,6 +53,7 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
     val latestConfig = remember { mutableStateOf(config) }
     latestConfig.value = config
     val model = remember { mutableStateOf<AvatarModel?>(null) }
+    val viewerRef = remember { mutableStateOf<ModelViewer?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFF20242B))) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -62,6 +63,7 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                     SurfaceView(context).apply {
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         val viewer = ModelViewer(this)
+                        viewerRef.value = viewer
                         AvatarRenderer.configure(viewer)
                         model.value = AvatarRenderer.loadModel(viewer, context)
                         setOnTouchListener(viewer)
@@ -94,6 +96,17 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                     color = Color.White,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
+            }
+            TextButton(
+                onClick = {
+                    viewerRef.value?.let { viewer ->
+                        viewer.resetToDefaultState()
+                        viewer.cameraFocalLength = 75f
+                    }
+                },
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+            ) {
+                Text("Reset view", color = Color.White)
             }
             Text(
                 text = stringResource(R.string.avatar_hint),
