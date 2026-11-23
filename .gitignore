@@ -5,4 +5,4 @@ local.properties
 .DS_Store
 /build
 /app/build
-/app/src/main/assets/models/avatar.glb
+/app/signing/

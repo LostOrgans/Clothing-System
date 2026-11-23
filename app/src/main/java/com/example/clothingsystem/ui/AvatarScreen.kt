@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clothingsystem.R
+import com.example.clothingsystem.avatar.AvatarModel
 import com.example.clothingsystem.avatar.AvatarRenderer
 import com.example.clothingsystem.avatar.AvatarViewModel
 import com.google.android.filament.utils.ModelViewer
@@ -32,18 +36,23 @@ private data class FrameHandle(
     val callback: Choreographer.FrameCallback,
 )
 
+private fun labelFor(name: String): String = name
+    .replace("\$md-", "")
+    .replace("_min", " (low)")
+    .replace("_max", " (high)")
+    .replace('-', ' ')
+    .replace('$', ' ')
+    .trim()
+    .replaceFirstChar { it.uppercase() }
+
 @Composable
 fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
     val config by viewModel.config.collectAsState()
     val latestConfig = remember { mutableStateOf(config) }
     latestConfig.value = config
-    val modelReady = remember { mutableStateOf(true) }
+    val model = remember { mutableStateOf<AvatarModel?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF20242B)),
-    ) {
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF20242B))) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -52,13 +61,13 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         val viewer = ModelViewer(this)
                         AvatarRenderer.configure(viewer)
-                        modelReady.value = AvatarRenderer.loadModel(viewer, context)
+                        model.value = AvatarRenderer.loadModel(viewer, context)
                         setOnTouchListener(viewer)
                         val choreographer = Choreographer.getInstance()
                         val callback = object : Choreographer.FrameCallback {
                             override fun doFrame(frameTimeNanos: Long) {
                                 choreographer.postFrameCallback(this)
-                                AvatarRenderer.applyWeights(viewer, latestConfig.value)
+                                model.value?.let { AvatarRenderer.applyWeights(viewer, it, latestConfig.value) }
                                 viewer.render(frameTimeNanos)
                             }
                         }
@@ -73,7 +82,7 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                     surfaceView.tag = null
                 },
             )
-            if (!modelReady.value) {
+            if (model.value == null) {
                 Text(
                     text = stringResource(R.string.avatar_missing),
                     color = Color.White,
@@ -86,16 +95,27 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
             )
         }
-        SliderRow("Slimness", config.slim, viewModel::setSlim)
-        SliderRow("Height", config.tall, viewModel::setTall)
-        SliderRow("Muscle", config.muscle, viewModel::setMuscle)
-    }
-}
-
-@Composable
-private fun SliderRow(label: String, value: Float, onChange: (Float) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)) {
-        Text(text = "$label: ${(value * 100).toInt()}%", color = Color.White)
-        Slider(value = value, onValueChange = onChange, valueRange = 0f..1f)
+        Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+            val current = model.value
+            if (current != null) {
+                for (index in current.morphNames.indices) {
+                    val name = current.morphNames[index]
+                    val value = config.weight(name, current.defaultWeights.getOrNull(index) ?: 0f)
+                    Text(text = labelFor(name), color = Color.White, modifier = Modifier.padding(start = 24.dp, top = 8.dp, end = 24.dp))
+                    Slider(
+                        value = value,
+                        onValueChange = { viewModel.setWeight(name, it) },
+                        valueRange = 0f..1f,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
+            }
+            TextButton(
+                onClick = viewModel::reset,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 12.dp),
+            ) {
+                Text(text = "Reset", color = Color.White)
+            }
+        }
     }
 }

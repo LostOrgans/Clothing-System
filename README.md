@@ -5,8 +5,8 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 
 ## What v1 does
 
-- Renders a stylized low-poly mannequin with Filament.
-- Three sliders reshape it live via glTF morph targets: slimness, height, muscle.
+- Renders a realistic parametric human with Filament.
+- Sliders are generated at runtime from the model's 24 glTF morph targets.
 - One-finger drag orbits, pinch zooms.
 - Slider values persist across restarts (DataStore).
 
@@ -26,14 +26,17 @@ targets; sliders set their weights through `RenderableManager.setMorphWeights`.
 
 ## Build and run
 
-1. Generate the avatar model:
+1. Generate the avatar model. Install Blender 4.2+ and MPFB 2 as a Blender extension
+   (from https://extensions.blender.org/add-ons/mpfb/), then:
 
    ```bash
    blender --background --python tools/make_avatar.py
    ```
 
-   This writes `app/src/main/assets/models/avatar.glb`. It is a generated file: edit the
-   script, not the output.
+   This writes `app/src/main/assets/models/avatar.glb`, a realistic human with 24 named
+   morph targets covering gender, age, muscle, weight, proportions, height, cupsize and
+   firmness plus MPFB detail targets. The app reads the target names from the GLB and
+   creates one slider per target — no hard-coded slider list. MakeHuman assets are CC0.
 
 2. Open the repository root in Android Studio. Let it download Gradle and the SDK.
    If there is no wrapper, use **File > New > New Project > Import** or run
@@ -46,12 +49,18 @@ If the model has not been generated, the app shows a message instead of crashing
 ## Checks
 
 ```bash
-./gradlew :app:compileDebugKotlin          # fast loop
-./gradlew :app:testDebugUnitTest :app:assembleDebug   # full gate
+gradle :app:compileDebugKotlin          # fast loop
+gradle :app:testDebugUnitTest :app:assembleDebug   # full gate
 ```
 
-The agent environment that created this project has no JDK/Gradle/Android SDK, so these
-checks have not been run here. Run them in Android Studio.
+## CI / APK
+
+`.github/workflows/build-apk.yml` runs the full gate on pushes to `main`, pull requests,
+and manual dispatch. It uses JDK 17 + Android SDK 35, builds `:app:assembleDebug`, and
+uploads `app-debug.apk` as a workflow artifact. Download it from the Actions run page.
+
+The generated `avatar.glb` is committed so CI can bundle it into the APK. Regenerate it
+with the Blender command above when the mesh changes.
 
 ## Controls
 
