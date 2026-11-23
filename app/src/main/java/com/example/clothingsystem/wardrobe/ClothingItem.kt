@@ -28,6 +28,8 @@ data class ClothingItem(
 
 val CATEGORIES = listOf("Tops", "Bottoms", "Outerwear", "Shoes", "Accessories")
 
+fun colorHex(label: String): Long = COLORS.firstOrNull { it.first == label }?.second ?: 0xFF9E9E9E
+
 val COLORS = listOf(
     "Black" to 0xFF1C1C1E,
     "White" to 0xFFF5F5F5,

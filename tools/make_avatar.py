@@ -14,6 +14,8 @@ from pathlib import Path
 
 import bmesh
 import bpy
+import numpy as np
+from mathutils import Vector
 
 
 def dynamic_import(absolute_package_str, key):
@@ -115,6 +117,45 @@ def strip_helper_geometry(obj):
     return len(keep)
 
 
+REGION_RANGES = {
+    "Hair": (1.45, 2.0),
+    "Eye_L": (1.5, 2.0),
+    "Eye_R": (1.5, 2.0),
+    "Nipple_L": (1.15, 1.5),
+    "Nipple_R": (1.15, 1.5),
+}
+
+
+def propagate_shape_keys(body, objects):
+    """Give every accessory the body's morph targets, using only its own body region."""
+    key_blocks = body.data.shape_keys.key_blocks
+    basis = np.array([tuple(v.co) for v in key_blocks["Basis"].data], dtype=np.float32)
+    deltas = {
+        key.name: np.array([tuple(v.co) for v in key.data], dtype=np.float32) - basis
+        for key in key_blocks
+        if key.name != "Basis"
+    }
+
+    for obj in objects:
+        if not obj.data.vertices:
+            continue
+        low, high = REGION_RANGES.get(obj.name, (-10.0, 10.0))
+        region = (basis[:, 2] >= low) & (basis[:, 2] <= high)
+        region_basis = basis[region]
+        if len(region_basis) == 0:
+            continue
+
+        obj_basis = np.array([tuple(v.co) for v in obj.data.vertices], dtype=np.float32)
+
+        for name, delta in deltas.items():
+            # A single rigid offset keeps small accessories intact while following the body.
+            offset = delta[region].mean(axis=0)
+            key = obj.shape_key_add(name=name, from_mix=False)
+            for index, vertex in enumerate(key.data):
+                vertex.co = Vector(obj_basis[index] + offset)
+            key.value = 0.0
+
+
 def make_simple_material(name, color):
     material = bpy.data.materials.new(name)
     material.use_nodes = True
@@ -124,29 +165,87 @@ def make_simple_material(name, color):
     return material
 
 
-def add_appearance_parts():
+def extract_group_mesh(body, group_name, name, color, min_z=None):
+    """Turn an MPFB fitting helper into a real mesh that fits the body exactly."""
+    group = body.vertex_groups.get(group_name)
+    if group is None:
+        return None
+    keep = {v.index for v in body.data.vertices if any(g.group == group.index for g in v.groups)}
+    if not keep:
+        return None
+
+    mesh_data = bmesh.new()
+    mesh_data.from_mesh(body.data)
+    mesh_data.faces.ensure_lookup_table()
+    remove = [
+        face for face in mesh_data.faces
+        if not all(v.index in keep for v in face.verts)
+        or (min_z is not None and face.calc_center_median().z < min_z)
+    ]
+    bmesh.ops.delete(mesh_data, geom=remove, context="FACES")
+    mesh = bpy.data.meshes.new(name)
+    mesh_data.to_mesh(mesh)
+    mesh_data.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    mesh.materials.append(make_simple_material(name, color))
+    return obj
+
+
+def add_appearance_parts(body):
     """Small separately-named meshes whose material colour is controlled by the app."""
-    hair = make_simple_material("Hair", (0.10, 0.07, 0.05))
-    eye = make_simple_material("Eye", (0.25, 0.45, 0.65))
+    parts = []
+    for group, name, color, min_z in (
+        ("helper-hair", "Hair", (0.10, 0.07, 0.05), 1.48),
+        ("helper-l-eye", "Eye_L", (0.25, 0.45, 0.65), None),
+        ("helper-r-eye", "Eye_R", (0.25, 0.45, 0.65), None),
+    ):
+        obj = extract_group_mesh(body, group, name, color, min_z)
+        if obj is not None:
+            parts.append(obj)
+
     nipple = make_simple_material("Nipple", (0.55, 0.35, 0.30))
-
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=10, radius=1.0, location=(0, 0.012, 1.60))
-    obj = bpy.context.object
-    obj.name = "Hair"
-    obj.scale = (0.128, 0.132, 0.12)
-    obj.data.materials.append(hair)
-
     for side in (-1, 1):
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.022, location=(side * 0.042, -0.098, 1.60))
-        obj = bpy.context.object
-        obj.name = f"Eye_{'L' if side < 0 else 'R'}"
-        obj.data.materials.append(eye)
-
         bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.017, location=(side * 0.085, -0.118, 1.31))
         obj = bpy.context.object
         obj.name = f"Nipple_{'L' if side < 0 else 'R'}"
         obj.scale = (1.0, 0.5, 1.0)
         obj.data.materials.append(nipple)
+        parts.append(obj)
+
+    return parts
+
+
+def garment_from_region(body, name, z_min, z_max, color, offset):
+    """Duplicate a height band of the body and push it outward to make a well-fitting garment."""
+    mesh_data = bmesh.new()
+    mesh_data.from_mesh(body.data)
+    mesh_data.faces.ensure_lookup_table()
+    outside = [
+        face for face in mesh_data.faces
+        if not (z_min <= face.calc_center_median().z <= z_max)
+    ]
+    bmesh.ops.delete(mesh_data, geom=outside, context="FACES")
+    bmesh.ops.recalc_face_normals(mesh_data, faces=mesh_data.faces)
+    for vertex in mesh_data.verts:
+        vertex.co += vertex.normal * offset
+
+    mesh = bpy.data.meshes.new(name)
+    mesh_data.to_mesh(mesh)
+    mesh_data.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    mesh.materials.append(make_simple_material(name, color))
+    return obj
+
+
+def add_garments(body):
+    """Garments derived from the body mesh so they fit and follow every morph."""
+    return [
+        garment_from_region(body, "Garment_Tops", 0.95, 1.48, (0.20, 0.45, 0.75), 0.014),
+        garment_from_region(body, "Garment_Bottoms", 0.09, 0.95, (0.12, 0.16, 0.25), 0.012),
+        garment_from_region(body, "Garment_Shoes", 0.0, 0.09, (0.08, 0.08, 0.08), 0.016),
+    ]
 
 
 def main():
@@ -169,9 +268,15 @@ def main():
     human.data.materials.append(skin)
 
     build_shape_keys(human)
+    extras = add_appearance_parts(human)
+    for obj in extras:
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    propagate_shape_keys(human, extras)
     kept = strip_helper_geometry(human)
     print(f"Kept {kept} body vertices")
-    add_appearance_parts()
 
     output = Path(__file__).resolve().parents[1] / "app/src/main/assets/models/avatar.glb"
     output.parent.mkdir(parents=True, exist_ok=True)
