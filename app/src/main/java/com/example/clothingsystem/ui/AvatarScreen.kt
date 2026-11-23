@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -89,6 +90,12 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
         SliderRow("Slimness", config.slim, viewModel::setSlim)
         SliderRow("Height", config.tall, viewModel::setTall)
         SliderRow("Muscle", config.muscle, viewModel::setMuscle)
+        TextButton(
+            onClick = viewModel::reset,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 12.dp),
+        ) {
+            Text(text = "Reset")
+        }
     }
 }
 

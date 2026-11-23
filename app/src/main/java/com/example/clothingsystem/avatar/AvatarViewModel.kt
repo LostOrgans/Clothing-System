@@ -20,6 +20,7 @@ class AvatarViewModel(application: Application) : AndroidViewModel(application) 
     fun setSlim(value: Float) = update { it.copy(slim = value) }
     fun setTall(value: Float) = update { it.copy(tall = value) }
     fun setMuscle(value: Float) = update { it.copy(muscle = value) }
+    fun reset() = update { AvatarConfig() }
 
     private fun update(transform: (AvatarConfig) -> AvatarConfig) {
         val next = transform(_config.value)
