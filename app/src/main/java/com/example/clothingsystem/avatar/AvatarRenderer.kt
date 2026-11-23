@@ -20,7 +20,7 @@ object AvatarRenderer {
     }
 
     fun configure(viewer: ModelViewer) {
-        viewer.view.blendMode = View.BlendMode.TRANSLUCENT
+        viewer.view.blendMode = View.BlendMode.OPAQUE
         viewer.cameraFocalLength = 75f
         viewer.scene.indirectLight = IndirectLight.Builder()
             .irradiance(1, floatArrayOf(0.7f, 0.7f, 0.7f))
@@ -76,6 +76,27 @@ object AvatarRenderer {
                 }
             }
         }
+    }
+
+    fun applyAppearance(viewer: ModelViewer, config: AvatarConfig) {
+        val asset = viewer.asset ?: return
+        val renderables = viewer.engine.renderableManager
+
+        fun colour(node: String, color: AppearanceColor) {
+            val entity = asset.getFirstEntityByName(node)
+            if (entity == 0 || !renderables.hasComponent(entity)) return
+            val instance = renderables.getInstance(entity)
+            for (primitive in 0 until renderables.getPrimitiveCount(instance)) {
+                val material = renderables.getMaterialInstanceAt(instance, primitive) ?: continue
+                runCatching { material.setParameter("baseColorFactor", color.r, color.g, color.b) }
+            }
+        }
+
+        colour("Hair", config.hairColor)
+        colour("Eye_L", config.eyeColor)
+        colour("Eye_R", config.eyeColor)
+        colour("Nipple_L", config.nippleColor)
+        colour("Nipple_R", config.nippleColor)
     }
 
     fun applyWeights(viewer: ModelViewer, model: AvatarModel, config: AvatarConfig) {
