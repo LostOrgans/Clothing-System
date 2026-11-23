@@ -67,20 +67,47 @@ data class Measurements(
     val heightCm: Float = 170f,
     val weightKg: Float = 70f,
     val chestCm: Float = 95f,
-    val waistCm: Float = 80f,
+    val waistCm: Float = 85f,
     val hipsCm: Float = 98f,
+    val shoulderCm: Float = 44f,
+    val ageYears: Float = 30f,
+    val muscleTone: Float = 5f,
+    val firmness: Float = 5f,
 ) {
     fun toControlValues(): Map<String, Float> {
         fun norm(value: Float, min: Float, max: Float) = ((value - min) / (max - min)).coerceIn(0f, 1f)
-        val proportions = listOf(
-            norm(chestCm, 70f, 130f),
-            norm(waistCm, 55f, 120f),
-            norm(hipsCm, 75f, 140f),
-        ).average().toFloat()
+        // Kept deliberately moderate: hair, eyes and nipples are separate meshes and do not
+        // follow extreme body morphs, so full-range targets would detach them.
         return mapOf(
-            "height" to norm(heightCm, 140f, 210f),
-            "weight" to norm(weightKg, 40f, 150f),
-            "proportions" to proportions,
+            "height" to norm(heightCm, 140f, 210f) * 0.35f,
+            "weight" to (norm(weightKg, 40f, 150f) * 0.75f + norm(waistCm, 55f, 140f) * 0.25f) * 0.5f,
+            "cupsize" to norm(chestCm, 70f, 130f) * 0.5f,
+            "proportions" to (norm(hipsCm, 75f, 150f) * 0.6f + norm(shoulderCm, 35f, 55f) * 0.4f) * 0.5f,
+            "muscle" to norm(muscleTone, 0f, 10f) * 0.4f,
+            "age" to norm(ageYears, 5f, 90f) * 0.5f,
+            "firmness" to norm(firmness, 0f, 10f) * 0.4f,
         )
     }
+
+    companion object {
+        val FIELDS = listOf(
+            Field("Height", "cm", 140f, 210f) { it.heightCm },
+            Field("Weight", "kg", 40f, 150f) { it.weightKg },
+            Field("Chest", "cm", 70f, 130f) { it.chestCm },
+            Field("Waist", "cm", 55f, 140f) { it.waistCm },
+            Field("Hips", "cm", 75f, 150f) { it.hipsCm },
+            Field("Shoulders", "cm", 35f, 55f) { it.shoulderCm },
+            Field("Age", "years", 5f, 90f) { it.ageYears },
+            Field("Muscle tone", "0-10", 0f, 10f) { it.muscleTone },
+            Field("Firmness", "0-10", 0f, 10f) { it.firmness },
+        )
+    }
+
+    data class Field(
+        val label: String,
+        val unit: String,
+        val min: Float,
+        val max: Float,
+        val get: (Measurements) -> Float,
+    )
 }

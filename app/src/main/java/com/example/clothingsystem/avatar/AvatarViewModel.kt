@@ -18,6 +18,10 @@ class AvatarViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setWeights(weights: Map<String, Float>) = update { old -> old.copy(weights = old.weights + weights) }
+    fun setSkinTone(tone: SkinTone) = update { it.copy(skinTone = tone) }
+    fun setHairColor(color: AppearanceColor) = update { it.copy(hairColor = color) }
+    fun setEyeColor(color: AppearanceColor) = update { it.copy(eyeColor = color) }
+    fun setNippleColor(color: AppearanceColor) = update { it.copy(nippleColor = color) }
     fun reset() = update { AvatarConfig() }
 
     private fun update(transform: (AvatarConfig) -> AvatarConfig) {

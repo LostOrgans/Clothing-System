@@ -12,6 +12,7 @@ import importlib
 import sys
 from pathlib import Path
 
+import bmesh
 import bpy
 
 
@@ -93,6 +94,61 @@ def build_shape_keys(obj):
     TargetService.reapply_macro_details(obj)
 
 
+def strip_helper_geometry(obj):
+    """MPFB's basemesh includes fitting helpers (hair, skirt, tights, ...). Keep only the body."""
+    body = obj.vertex_groups.get("body")
+    if body is None:
+        raise RuntimeError("MPFB basemesh has no 'body' vertex group")
+    keep = set()
+    for vertex in obj.data.vertices:
+        if any(group.group == body.index for group in vertex.groups):
+            keep.add(vertex.index)
+
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    mesh.verts.ensure_lookup_table()
+    remove = [vertex for vertex in mesh.verts if vertex.index not in keep]
+    bmesh.ops.delete(mesh, geom=remove, context="VERTS")
+    mesh.to_mesh(obj.data)
+    mesh.free()
+    obj.data.update()
+    return len(keep)
+
+
+def make_simple_material(name, color):
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    principled.inputs["Base Color"].default_value = (*color, 1.0)
+    principled.inputs["Roughness"].default_value = 0.7
+    return material
+
+
+def add_appearance_parts():
+    """Small separately-named meshes whose material colour is controlled by the app."""
+    hair = make_simple_material("Hair", (0.10, 0.07, 0.05))
+    eye = make_simple_material("Eye", (0.25, 0.45, 0.65))
+    nipple = make_simple_material("Nipple", (0.55, 0.35, 0.30))
+
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=10, radius=1.0, location=(0, 0.012, 1.60))
+    obj = bpy.context.object
+    obj.name = "Hair"
+    obj.scale = (0.128, 0.132, 0.12)
+    obj.data.materials.append(hair)
+
+    for side in (-1, 1):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.022, location=(side * 0.042, -0.098, 1.60))
+        obj = bpy.context.object
+        obj.name = f"Eye_{'L' if side < 0 else 'R'}"
+        obj.data.materials.append(eye)
+
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.017, location=(side * 0.085, -0.118, 1.31))
+        obj = bpy.context.object
+        obj.name = f"Nipple_{'L' if side < 0 else 'R'}"
+        obj.scale = (1.0, 0.5, 1.0)
+        obj.data.materials.append(nipple)
+
+
 def main():
     global HumanService, TargetService, HumanObjectProperties
     enable_mpfb()
@@ -113,6 +169,9 @@ def main():
     human.data.materials.append(skin)
 
     build_shape_keys(human)
+    kept = strip_helper_geometry(human)
+    print(f"Kept {kept} body vertices")
+    add_appearance_parts()
 
     output = Path(__file__).resolve().parents[1] / "app/src/main/assets/models/avatar.glb"
     output.parent.mkdir(parents=True, exist_ok=True)
