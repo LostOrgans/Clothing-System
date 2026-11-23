@@ -32,8 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.clothingsystem.R
-import com.example.clothingsystem.avatar.AppearanceColor
-import com.example.clothingsystem.avatar.AppearanceColors
 import com.example.clothingsystem.avatar.AvatarModel
 import com.example.clothingsystem.avatar.AvatarRenderer
 import com.example.clothingsystem.avatar.AvatarViewModel
@@ -73,7 +71,6 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                                 choreographer.postFrameCallback(this)
                                 model.value?.let {
                                     AvatarRenderer.applyWeights(viewer, it, latestConfig.value)
-                                    AvatarRenderer.applySkinTone(viewer, latestConfig.value.skinTone)
                                     AvatarRenderer.applyAppearance(viewer, latestConfig.value)
                                 }
                                 viewer.render(frameTimeNanos)
@@ -130,9 +127,6 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                     ) {}
                 }
             }
-            ColourRow("Hair", AppearanceColors.HAIR, config.hairColor, viewModel::setHairColor)
-            ColourRow("Eyes", AppearanceColors.EYE, config.eyeColor, viewModel::setEyeColor)
-            ColourRow("Nipples", AppearanceColors.NIPPLE, config.nippleColor, viewModel::setNippleColor)
             MeasurementsForm { measurements ->
                 val current = model.value ?: return@MeasurementsForm
                 val defaults = current.morphNames.zip(current.defaultWeights.toTypedArray()).toMap()
@@ -152,25 +146,6 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
             ) {
                 Text(text = "Reset", color = Color.White)
             }
-        }
-    }
-}
-
-@Composable
-private fun ColourRow(
-    label: String,
-    options: List<AppearanceColor>,
-    selected: AppearanceColor,
-    onSelect: (AppearanceColor) -> Unit,
-) {
-    Text(label, color = Color.White, modifier = Modifier.padding(start = 24.dp, top = 8.dp))
-    Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) {
-        for (option in options) {
-            Button(
-                onClick = { onSelect(option) },
-                modifier = Modifier.size(48.dp).padding(end = 6.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(option.hex)),
-            ) {}
         }
     }
 }

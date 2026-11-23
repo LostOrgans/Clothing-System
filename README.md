@@ -8,9 +8,8 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 - Renders a realistic parametric human with Filament.
 - The body is controlled **only by measurements** (height, weight, chest, waist, hips,
   shoulders, age, muscle tone, firmness), mapped to the model's 24 morph targets. No raw sliders.
-- Live colour swatches for skin, hair, eyes and nipples. Hair and eyes use MPFB's fitted
-  geometry, clipped to a short hairstyle; all accessories inherit rigid offsets from the
-  relevant body region so they follow the body when measurements change.
+- Live skin-tone presets tint the CC0 textured skin material.
+- The generator requires the CC0 `makehuman_system_assets` pack installed in MPFB.
 - Each frame clears the render target, so changing appearance leaves no ghost of the previous model.
 - One-finger drag orbits, pinch zooms.
 - Slider values persist across restarts (DataStore).
@@ -81,5 +80,5 @@ with the Blender command above when the mesh changes.
 
 1. MakeHuman CC0 skin textures and more region targets
 2. Photo-based face, then photo-derived body
-3. Clothing layered onto the avatar (garment experiments were discarded — they looked patchy)
+3. Hair, eyes and clothes as fitted assets (experiments were discarded — they corrupted the UVs)
 4. Rule-based outfit suggestions
