@@ -1,13 +1,13 @@
 package com.example.clothingsystem.avatar
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertContentEquals
 import kotlin.test.assertFailsWith
 
 class AvatarConfigTest {
     @Test
     fun weightsMatchShapeKeyOrder() {
-        assertEquals(floatArrayOf(0.2f, 0.7f, 1f), AvatarConfig(0.2f, 0.7f, 1f).morphWeights())
+        assertContentEquals(floatArrayOf(0.2f, 0.7f, 1f), AvatarConfig(0.2f, 0.7f, 1f).morphWeights())
     }
 
     @Test
