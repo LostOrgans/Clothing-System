@@ -59,8 +59,12 @@ gradle :app:testDebugUnitTest :app:assembleDebug   # full gate
 ## CI / APK
 
 `.github/workflows/build-apk.yml` runs the full gate on pushes to `main`, pull requests,
-and manual dispatch. It uses JDK 17 + Android SDK 35, builds `:app:assembleDebug`, and
-uploads `app-debug.apk` as a workflow artifact. Download it from the Actions run page.
+and manual dispatch. It uses JDK 17 + Gradle 8.9 + Android SDK 35, builds a signed
+`app-release.apk`, and uploads it as a workflow artifact.
+
+On pushes to `main` (not pull requests) it also publishes a rolling **`latest` GitHub
+Release** with the signed APK attached:
+https://github.com/LostOrgans/Clothing-System/releases/tag/latest
 
 The generated `avatar.glb` is committed so CI can bundle it into the APK. Regenerate it
 with the Blender command above when the mesh changes.
