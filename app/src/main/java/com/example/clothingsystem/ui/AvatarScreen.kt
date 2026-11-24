@@ -53,9 +53,10 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
     val wardrobe: WardrobeViewModel = viewModel()
     val items by wardrobe.items.collectAsState()
     val worn by wardrobe.worn.collectAsState()
-    val activeGarments = remember { mutableStateOf(emptySet<AvatarRenderer.Garment>()) }
-    activeGarments.value = worn.mapNotNull { id ->
-        items.firstOrNull { it.id == id }?.category?.let { AvatarRenderer.garmentFor(it) }
+    val wornItems = remember { mutableStateOf(emptyList<com.example.clothingsystem.wardrobe.ClothingItem>()) }
+    wornItems.value = worn.mapNotNull { id -> items.firstOrNull { it.id == id } }
+    val activeGarments = wornItems.value.mapNotNull {
+        AvatarRenderer.garmentFor(it.category)
     }.toSet()
     val latestConfig = remember { mutableStateOf(config) }
     latestConfig.value = config
@@ -80,10 +81,10 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                                 choreographer.postFrameCallback(this)
                                 model.value?.let {
                                     AvatarRenderer.applyWeights(
-                                        viewer, it, latestConfig.value, activeGarments.value,
+                                        viewer, it, latestConfig.value, activeGarments,
                                     )
                                     AvatarRenderer.applyAppearance(viewer, latestConfig.value)
-                                    AvatarRenderer.applyGarments(viewer, activeGarments.value)
+                                    AvatarRenderer.applyGarments(viewer, wornItems.value)
                                 }
                                 viewer.render(frameTimeNanos)
                             }

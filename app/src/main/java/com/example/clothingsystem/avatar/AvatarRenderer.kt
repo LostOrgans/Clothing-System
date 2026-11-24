@@ -10,6 +10,7 @@ import com.google.android.filament.utils.scale
 import com.google.android.filament.utils.translation
 import com.google.android.filament.utils.transpose
 import org.json.JSONObject
+import kotlin.math.pow
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -129,20 +130,45 @@ object AvatarRenderer {
         }
     }
 
-    fun applyGarments(viewer: ModelViewer, active: Set<Garment>) {
+    fun applyGarments(viewer: ModelViewer, worn: List<com.example.clothingsystem.wardrobe.ClothingItem>) {
         val asset = viewer.asset ?: return
         val transforms = viewer.engine.transformManager
-        for (garment in garmentNodes.values) {
+        val renderables = viewer.engine.renderableManager
+        for ((category, garment) in garmentNodes) {
             val node = garment.node
             val entity = asset.getFirstEntityByName(node)
             if (entity == 0) continue
+            val item = worn.lastOrNull { it.category == category }
             val instance = transforms.getInstance(entity)
             val base = baseTransforms.getOrPut(node) { transforms.getTransform(instance, FloatArray(16)) }
             val scaled = base.copyOf()
-            val factor = if (active.any { it.node == node }) 1f else 0.001f
+            val factor = if (item != null) 1f else 0.001f
             for (index in intArrayOf(0, 1, 2, 4, 5, 6, 8, 9, 10)) scaled[index] *= factor
             transforms.setTransform(instance, scaled)
+
+            if (item != null && renderables.hasComponent(entity)) {
+                val color = toLinear(com.example.clothingsystem.wardrobe.colorHex(item.color))
+                val renderable = renderables.getInstance(entity)
+                for (primitive in 0 until renderables.getPrimitiveCount(renderable)) {
+                    val material = renderables.getMaterialInstanceAt(renderable, primitive) ?: continue
+                    runCatching {
+                        material.setParameter("baseColorFactor", color[0], color[1], color[2])
+                    }
+                }
+            }
         }
+    }
+
+    private fun toLinear(hex: Long): FloatArray {
+        fun channel(value: Int): Float {
+            val c = value / 255f
+            return if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).pow(2.4f)
+        }
+        return floatArrayOf(
+            channel(((hex shr 16) and 0xFF).toInt()),
+            channel(((hex shr 8) and 0xFF).toInt()),
+            channel((hex and 0xFF).toInt()),
+        )
     }
 
     fun applyWeights(

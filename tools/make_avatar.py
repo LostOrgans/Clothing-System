@@ -14,6 +14,7 @@ from pathlib import Path
 
 import bmesh
 import bpy
+import numpy as np
 
 
 def dynamic_import(suffix, key):
@@ -158,18 +159,34 @@ def add_garment_hide_morphs(human, mapping):
         if group is None:
             continue
         key = human.shape_key_add(name=morph_name, from_mix=False)
+        collapsed = set()
+        strip = []
+        kept = []
         for vertex in human.data.vertices:
             x, y, z = vertex.co
             weight = next(
                 (g.weight for g in vertex.groups if g.group == group.index),
                 0.0,
             )
-            # The CC0 delete groups miss the inner-thigh strip, so hide it explicitly.
-            center_strip = abs(x) < 0.10 and 0.02 < z < 0.95
-            if weight > 0.5 or center_strip:
+            if weight > 0.5:
+                collapsed.add(vertex.index)
                 key.data[vertex.index].co = (0.0, 0.0, 1.0)
+            elif abs(x) < 0.10 and 0.02 < z < 0.95:
+                strip.append(vertex.index)
             else:
-                key.data[vertex.index].co = (x, y, z)
+                kept.append(vertex.index)
+
+        # The delete groups miss the inner-thigh gap; snap those vertices onto nearby
+        # kept vertices so the triangles stay on the body surface under the clothes.
+        kept_basis = np.array([tuple(human.data.vertices[i].co) for i in kept], dtype=np.float32)
+        for index in strip:
+            point = np.array(human.data.vertices[index].co, dtype=np.float32)
+            distance = np.square(kept_basis - point).sum(axis=1)
+            nearest = kept_basis[distance.argmin()]
+            key.data[index].co = (float(nearest[0]), float(nearest[1]), float(nearest[2]))
+        for index in kept:
+            x, y, z = human.data.vertices[index].co
+            key.data[index].co = (x, y, z)
         key.value = 0.0
 
 

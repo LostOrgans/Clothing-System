@@ -13,6 +13,8 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 - Three CC0 fitted garments can be worn independently (Tops / Outerwear / Shoes); the
   corresponding body geometry is hidden automatically. What is worn is saved across restarts.
 - An Outfits tab suggests colour-harmonised combinations from the wardrobe and saves them.
+- A Design tab previews and creates custom garments (T-shirt, jacket, trousers or shoes);
+  designed items are saved to the wardrobe and tint the fitted garment when worn.
 - The generator requires the CC0 `makehuman_system_assets` pack installed in MPFB.
 - Each frame clears the render target, so changing appearance leaves no ghost of the previous model.
 - One-finger drag orbits, pinch zooms.

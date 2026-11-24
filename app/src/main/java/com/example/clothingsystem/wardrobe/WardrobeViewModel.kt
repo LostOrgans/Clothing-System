@@ -22,12 +22,19 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun add(name: String, category: String, color: String, photoUri: Uri?) {
+    fun add(
+        name: String,
+        category: String,
+        color: String,
+        photoUri: Uri?,
+        design: String? = null,
+    ) {
         if (name.isBlank()) return
         viewModelScope.launch {
             val photoFile = photoUri?.let { store.savePhoto(it) }
             val updated = _items.value + ClothingItem(
-                name = name.trim(), category = category, color = color, photoFile = photoFile,
+                name = name.trim(), category = category, color = color,
+                photoFile = photoFile, design = design,
             )
             _items.value = updated
             store.save(updated)
