@@ -160,10 +160,10 @@ def add_garment_hide_morphs(human, mapping):
         key = human.shape_key_add(name=morph_name, from_mix=False)
         for vertex in human.data.vertices:
             x, y, z = vertex.co
-            try:
-                weight = group.weight(vertex.index)
-            except (RuntimeError, ValueError):
-                weight = 0.0
+            weight = next(
+                (g.weight for g in vertex.groups if g.group == group.index),
+                0.0,
+            )
             # The CC0 delete groups miss the inner-thigh strip, so hide it explicitly.
             center_strip = abs(x) < 0.10 and 0.02 < z < 0.95
             if weight > 0.5 or center_strip:
@@ -232,11 +232,16 @@ def main():
 
     output = Path(__file__).resolve().parents[1] / "app/src/main/assets/models/avatar.glb"
     output.parent.mkdir(parents=True, exist_ok=True)
+    # Downscale textures: 2048px skins are overkill on a phone.
+    for image in bpy.data.images:
+        if image.source == "FILE" and max(image.size) > 1024:
+            image.scale(1024, 1024)
+
     bpy.ops.export_scene.gltf(
         filepath=str(output),
         export_format="GLB",
         export_morph=True,
-        export_morph_normal=True,
+        export_morph_normal=False,
         use_selection=False,
     )
     names = [k.name for k in human.data.shape_keys.key_blocks]
