@@ -12,6 +12,9 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
     private val store = WardrobeStore(application)
     private val _items = MutableStateFlow<List<ClothingItem>>(emptyList())
     val items: StateFlow<List<ClothingItem>> = _items
+    private val _worn = MutableStateFlow<List<String>>(emptyList())
+    val worn: StateFlow<List<String>> = _worn
+
     init {
         viewModelScope.launch { _items.value = store.load() }
     }
@@ -28,10 +31,15 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun toggleWorn(id: String) {
+        _worn.value = if (id in _worn.value) _worn.value - id else _worn.value + id
+    }
+
     fun remove(id: String) {
         viewModelScope.launch {
             val updated = _items.value.filterNot { it.id == id }
             _items.value = updated
+            _worn.value = _worn.value - id
             store.save(updated)
         }
     }

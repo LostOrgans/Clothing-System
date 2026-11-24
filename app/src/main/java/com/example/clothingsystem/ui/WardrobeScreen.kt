@@ -41,6 +41,7 @@ import com.example.clothingsystem.wardrobe.WardrobeViewModel
 @Composable
 fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
+    val worn by viewModel.worn.collectAsState()
     val name = remember { mutableStateOf("") }
     val category = remember { mutableStateOf(CATEGORIES.first()) }
     val color = remember { mutableStateOf(COLORS.first().first) }
@@ -92,7 +93,7 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
         Text("Your wardrobe (${items.size})", modifier = Modifier.padding(top = 16.dp))
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(items, key = { it.id }) { item ->
-                WardrobeRow(item, viewModel)
+                WardrobeRow(item, viewModel, item.id in worn)
             }
         }
     }
@@ -102,6 +103,7 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
 private fun WardrobeRow(
     item: com.example.clothingsystem.wardrobe.ClothingItem,
     viewModel: WardrobeViewModel,
+    isWorn: Boolean,
 ) {
     val context = LocalContext.current
     val store = remember { WardrobeStore(context) }
@@ -121,6 +123,9 @@ private fun WardrobeRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(item.name)
             Text("${item.category} · ${item.color}")
+        }
+        TextButton(onClick = { viewModel.toggleWorn(item.id) }) {
+            Text(if (isWorn) "Remove" else "Wear")
         }
         TextButton(onClick = { viewModel.remove(item.id) }) { Text("Delete") }
     }

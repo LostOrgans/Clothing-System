@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -38,6 +39,7 @@ import com.example.clothingsystem.avatar.AvatarViewModel
 import com.example.clothingsystem.avatar.Measurements
 import com.example.clothingsystem.avatar.MorphMapping
 import com.example.clothingsystem.avatar.SkinTone
+import com.example.clothingsystem.wardrobe.WardrobeViewModel
 import com.google.android.filament.utils.ModelViewer
 
 private data class FrameHandle(
@@ -48,6 +50,13 @@ private data class FrameHandle(
 @Composable
 fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
     val config by viewModel.config.collectAsState()
+    val wardrobe: WardrobeViewModel = viewModel()
+    val items by wardrobe.items.collectAsState()
+    val worn by wardrobe.worn.collectAsState()
+    val activeGarments = remember { mutableStateOf(emptySet<AvatarRenderer.Garment>()) }
+    activeGarments.value = worn.mapNotNull { id ->
+        items.firstOrNull { it.id == id }?.category?.let { AvatarRenderer.garmentFor(it) }
+    }.toSet()
     val latestConfig = remember { mutableStateOf(config) }
     latestConfig.value = config
     val model = remember { mutableStateOf<AvatarModel?>(null) }
@@ -70,8 +79,11 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                             override fun doFrame(frameTimeNanos: Long) {
                                 choreographer.postFrameCallback(this)
                                 model.value?.let {
-                                    AvatarRenderer.applyWeights(viewer, it, latestConfig.value)
+                                    AvatarRenderer.applyWeights(
+                                        viewer, it, latestConfig.value, activeGarments.value,
+                                    )
                                     AvatarRenderer.applyAppearance(viewer, latestConfig.value)
+                                    AvatarRenderer.applyGarments(viewer, activeGarments.value)
                                 }
                                 viewer.render(frameTimeNanos)
                             }
@@ -98,10 +110,10 @@ fun AvatarScreen(viewModel: AvatarViewModel = viewModel()) {
                 onClick = {
                     viewerRef.value?.let { viewer ->
                         viewer.resetToDefaultState()
-                        viewer.cameraFocalLength = 75f
+                        viewer.cameraFocalLength = 115f
                     }
                 },
-                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp),
             ) {
                 Text("Reset view", color = Color.White)
             }

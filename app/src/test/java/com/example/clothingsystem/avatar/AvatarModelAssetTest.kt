@@ -30,6 +30,10 @@ class AvatarModelAssetTest {
         assertTrue(json.contains("weight_max"), "weight metric must map to a morph target")
         assertTrue(json.contains("cupsize_max"), "chest metric must map to a morph target")
         assertTrue(json.contains("age_max"), "age metric must map to a morph target")
+        assertTrue(json.contains("chest_max"), "chest metric must map to a morph target")
+        assertTrue(json.contains("waist_max"), "waist metric must map to a morph target")
+        assertTrue(json.contains("hips_max"), "hips metric must map to a morph target")
+        assertTrue(json.contains("shoulders_max"), "shoulders metric must map to a morph target")
     }
 
     @Test
@@ -37,6 +41,24 @@ class AvatarModelAssetTest {
         val json = jsonChunk()
         assertTrue(json.contains("\"images\""), "generated human must have a skin texture")
         assertTrue(json.contains("\"textures\""), "generated human must reference a texture")
+    }
+
+    @Test
+    fun modelHasFaceAndGarmentNodes() {
+        val json = jsonChunk()
+        for (node in listOf("Face_Eyes", "Face_Hair", "Garment_Casual", "Garment_Elegant", "Garment_Shoes")) {
+            assertTrue(json.contains(node), "GLB must contain $node")
+        }
+        for (morph in listOf("hide_Casual", "hide_Elegant", "hide_Shoes")) {
+            assertTrue(json.contains(morph), "GLB must contain $morph")
+        }
+    }
+
+    @Test
+    fun bodyMaterialIsOpaque() {
+        val json = jsonChunk()
+        val bodyMaterial = Regex("\"name\":\"Avatar\\.body\"[^}]*}").find(json)?.value ?: ""
+        assertTrue(!bodyMaterial.contains("\"alphaMode\":\"BLEND\""), "body must not be see-through")
     }
 
     @Test
