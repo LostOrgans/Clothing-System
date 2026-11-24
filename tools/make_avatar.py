@@ -164,8 +164,10 @@ def add_garment_hide_morphs(human, mapping):
                 weight = group.weight(vertex.index)
             except (RuntimeError, ValueError):
                 weight = 0.0
-            if weight > 0.5:
-                key.data[vertex.index].co = (x * 0.08, y * 0.08, z)
+            # The CC0 delete groups miss the inner-thigh strip, so hide it explicitly.
+            center_strip = abs(x) < 0.10 and 0.02 < z < 0.95
+            if weight > 0.5 or center_strip:
+                key.data[vertex.index].co = (0.0, 0.0, 1.0)
             else:
                 key.data[vertex.index].co = (x, y, z)
         key.value = 0.0

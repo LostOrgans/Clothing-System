@@ -16,7 +16,10 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
     val worn: StateFlow<List<String>> = _worn
 
     init {
-        viewModelScope.launch { _items.value = store.load() }
+        viewModelScope.launch {
+            _items.value = store.load()
+            _worn.value = store.loadWorn()
+        }
     }
 
     fun add(name: String, category: String, color: String, photoUri: Uri?) {
@@ -32,7 +35,9 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleWorn(id: String) {
-        _worn.value = if (id in _worn.value) _worn.value - id else _worn.value + id
+        val updated = if (id in _worn.value) _worn.value - id else _worn.value + id
+        _worn.value = updated
+        viewModelScope.launch { store.saveWorn(updated) }
     }
 
     fun remove(id: String) {
@@ -41,6 +46,7 @@ class WardrobeViewModel(application: Application) : AndroidViewModel(application
             _items.value = updated
             _worn.value = _worn.value - id
             store.save(updated)
+            store.saveWorn(_worn.value)
         }
     }
 }

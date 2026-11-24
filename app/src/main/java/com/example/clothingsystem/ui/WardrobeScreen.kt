@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,7 +52,12 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
         photoUri.value = uri
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .padding(16.dp),
+    ) {
         OutlinedTextField(
             value = name.value,
             onValueChange = { name.value = it },
@@ -58,7 +65,7 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Text("Category", modifier = Modifier.padding(top = 8.dp))
+        Text("Category", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 8.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             for (option in CATEGORIES) {
                 TextButton(onClick = { category.value = option }) {
@@ -66,7 +73,7 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
                 }
             }
         }
-        Text("Color", modifier = Modifier.padding(top = 4.dp))
+        Text("Color", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 4.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             for ((label, hex) in COLORS) {
                 TextButton(onClick = { color.value = label }) {
@@ -77,7 +84,7 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = { picker.launch("image/*") }) { Text("Add photo") }
             Spacer(Modifier.width(8.dp))
-            Text(if (photoUri.value == null) "No photo" else "Photo selected")
+            Text(if (photoUri.value == null) "No photo" else "Photo selected", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
         }
         Button(
             onClick = {
@@ -90,7 +97,7 @@ fun WardrobeScreen(viewModel: WardrobeViewModel = viewModel()) {
             Text("Add item")
         }
 
-        Text("Your wardrobe (${items.size})", modifier = Modifier.padding(top = 16.dp))
+        Text("Your wardrobe (${items.size})", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 16.dp))
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(items, key = { it.id }) { item ->
                 WardrobeRow(item, viewModel, item.id in worn)
@@ -121,8 +128,8 @@ private fun WardrobeRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.name)
-            Text("${item.category} · ${item.color}")
+            Text(item.name, color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
+            Text("${item.category} · ${item.color}", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
         }
         TextButton(onClick = { viewModel.toggleWorn(item.id) }) {
             Text(if (isWorn) "Remove" else "Wear")

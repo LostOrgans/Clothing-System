@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.example.clothingsystem.ui.AvatarScreen
+import com.example.clothingsystem.ui.OutfitsScreen
 import com.example.clothingsystem.ui.WardrobeScreen
 
 class MainActivity : ComponentActivity() {
@@ -37,7 +38,11 @@ private fun MainScreen() {
     val tab = remember { mutableStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f)) {
-            if (tab.value == 0) AvatarScreen() else WardrobeScreen()
+            when (tab.value) {
+                0 -> AvatarScreen()
+                1 -> WardrobeScreen()
+                else -> OutfitsScreen()
+            }
         }
         NavigationBar(modifier = Modifier.fillMaxWidth()) {
             NavigationBarItem(
@@ -50,6 +55,12 @@ private fun MainScreen() {
                 selected = tab.value == 1,
                 onClick = { tab.value = 1 },
                 label = { Text("Wardrobe") },
+                icon = {},
+            )
+            NavigationBarItem(
+                selected = tab.value == 2,
+                onClick = { tab.value = 2 },
+                label = { Text("Outfits") },
                 icon = {},
             )
         }
