@@ -14,6 +14,7 @@ from pathlib import Path
 
 import bmesh
 import bpy
+import numpy as np
 
 
 def dynamic_import(suffix, key):
@@ -43,6 +44,23 @@ def enable_mpfb():
     for module_name in list(sys.modules):
         if module_name.endswith("mpfb.entities.objectproperties"):
             importlib.import_module(module_name)
+
+
+def force_opaque(materials):
+    """MPFB wires texture alpha into the shader; glTF then renders eyes/mouth as see-through."""
+    for material in materials:
+        if not material or not material.use_nodes:
+            continue
+        nodes = material.node_tree.nodes
+        principled = next((n for n in nodes if n.type == "BSDF_PRINCIPLED"), None)
+        if principled is None:
+            continue
+        for link in list(material.node_tree.links):
+            if link.to_node == principled and link.to_socket.name == "Alpha":
+                material.node_tree.links.remove(link)
+        principled.inputs["Alpha"].default_value = 1.0
+        material.surface_render_method = "DITHERED"
+        material.blend_method = "OPAQUE" if hasattr(material, "blend_method") else "OPAQUE"
 
 
 def evaluated_positions(obj):
@@ -91,6 +109,104 @@ def strip_helpers(obj):
     return len(keep)
 
 
+def add_measurement_morphs(obj):
+    """Explicit region morphs — MPFB's weight/muscle macros barely move the mesh."""
+    basis = [tuple(v.co) for v in obj.data.vertices]
+
+    def smoothstep(edge0, edge1, x):
+        t = max(0.0, min(1.0, (x - edge0) / (edge1 - edge0)))
+        return t * t * (3 - 2 * t)
+
+    regions = (
+        ("chest", 1.17, 0.16, -1.0, 1.0),
+        ("waist", 1.03, 0.11, -1.0, 1.0),
+        ("hips", 0.85, 0.13, -1.0, 1.0),
+        ("shoulders", 1.45, 0.12, 0.12, 1.0),
+        ("thighs", 0.55, 0.25, -1.0, 1.0),
+    )
+    for name, center, half_height, min_abs_x, max_abs_x in regions:
+        for direction, factor in (("min", -0.16), ("max", 0.16)):
+            key = obj.shape_key_add(name=f"{name}_{direction}", from_mix=False)
+            for index, (x, y, z) in enumerate(basis):
+                falloff = (1.0 - smoothstep(half_height * 0.6, half_height, abs(z - center)))
+                abs_x = abs(x)
+                side = smoothstep(min_abs_x, min_abs_x + 0.04, abs_x)
+                side *= 1.0 - smoothstep(max_abs_x - 0.04, max_abs_x, abs_x)
+                amount = factor * falloff * side
+                key.data[index].co = (x + x * amount, y + y * amount, z)
+            key.value = 0.0
+
+
+def add_face_assets(human_service, asset_service, human):
+    for subdir, filename, kind in (
+        ("eyes", "low-poly.mhclo", "Eyes"),
+        ("eyebrows", "eyebrow001.mhclo", "Eyebrows"),
+        ("eyelashes", "eyelashes01.mhclo", "Eyelashes"),
+        ("hair", "long01.mhclo", "Hair"),
+    ):
+        path = asset_service.find_asset_absolute_path(filename, asset_subdir=subdir)
+        if path is None:
+            continue
+        obj = human_service.add_mhclo_asset(path, human, asset_type=kind, material_type="GAMEENGINE")
+        if obj is not None:
+            obj.name = f"Face_{kind}"
+
+
+def add_garment_hide_morphs(human, mapping):
+    """Collapse body vertices marked Delete.<asset> so skin does not poke through clothes."""
+    for morph_name, group_name in mapping.items():
+        group = human.vertex_groups.get(group_name)
+        if group is None:
+            continue
+        key = human.shape_key_add(name=morph_name, from_mix=False)
+        collapsed = set()
+        strip = []
+        kept = []
+        for vertex in human.data.vertices:
+            x, y, z = vertex.co
+            weight = next(
+                (g.weight for g in vertex.groups if g.group == group.index),
+                0.0,
+            )
+            if weight > 0.5:
+                collapsed.add(vertex.index)
+                key.data[vertex.index].co = (0.0, 0.0, 1.0)
+            elif abs(x) < 0.10 and 0.02 < z < 0.95:
+                strip.append(vertex.index)
+            else:
+                kept.append(vertex.index)
+
+        # The delete groups miss the inner-thigh gap; snap those vertices onto nearby
+        # kept vertices so the triangles stay on the body surface under the clothes.
+        kept_basis = np.array([tuple(human.data.vertices[i].co) for i in kept], dtype=np.float32)
+        for index in strip:
+            point = np.array(human.data.vertices[index].co, dtype=np.float32)
+            distance = np.square(kept_basis - point).sum(axis=1)
+            nearest = kept_basis[distance.argmin()]
+            key.data[index].co = (float(nearest[0]), float(nearest[1]), float(nearest[2]))
+        for index in kept:
+            x, y, z = human.data.vertices[index].co
+            key.data[index].co = (x, y, z)
+        key.value = 0.0
+
+
+def add_clothes(human_service, asset_service, human):
+    """CC0 MHCLO garments fitted to the body; the app shows any combination of them."""
+    for filename, name in (
+        ("female_casualsuit01.mhclo", "Garment_Casual"),
+        ("female_elegantsuit01.mhclo", "Garment_Elegant"),
+        ("shoes01.mhclo", "Garment_Shoes"),
+    ):
+        path = asset_service.find_asset_absolute_path(filename, asset_subdir="clothes")
+        if path is None:
+            continue
+        obj = human_service.add_mhclo_asset(
+            path, human, asset_type="clothes", material_type="GAMEENGINE"
+        )
+        if obj is not None:
+            obj.name = name
+
+
 def main():
     enable_mpfb()
     human_service = dynamic_import("mpfb.services.humanservice", "HumanService")
@@ -110,9 +226,21 @@ def main():
     if skin_path is None:
         raise RuntimeError("Install the CC0 makehuman_system_assets pack first")
     human_service.set_character_skin(skin_path, human, skin_type="GAMEENGINE")
+    force_opaque(human.data.materials)
+    add_face_assets(human_service, asset_service, human)
+    add_clothes(human_service, asset_service, human)
 
     build_shape_keys(human, human_properties, target_service)
     kept = strip_helpers(human)
+    add_measurement_morphs(human)
+    add_garment_hide_morphs(
+        human,
+        {
+            "hide_Casual": "Delete.female_casualsuit01",
+            "hide_Elegant": "Delete.female_elegantsuit01",
+            "hide_Shoes": "Delete.shoes01",
+        },
+    )
     print(f"Kept {kept} body vertices")
 
     # All morphs start at zero; the app drives them from measurements.
@@ -121,11 +249,16 @@ def main():
 
     output = Path(__file__).resolve().parents[1] / "app/src/main/assets/models/avatar.glb"
     output.parent.mkdir(parents=True, exist_ok=True)
+    # Downscale textures: 2048px skins are overkill on a phone.
+    for image in bpy.data.images:
+        if image.source == "FILE" and max(image.size) > 1024:
+            image.scale(1024, 1024)
+
     bpy.ops.export_scene.gltf(
         filepath=str(output),
         export_format="GLB",
         export_morph=True,
-        export_morph_normal=True,
+        export_morph_normal=False,
         use_selection=False,
     )
     names = [k.name for k in human.data.shape_keys.key_blocks]

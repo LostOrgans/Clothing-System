@@ -10,17 +10,19 @@ data class ClothingItem(
     val category: String,
     val color: String,
     val photoFile: String? = null,
+    val design: String? = null,
 ) {
-    fun serialise(): String = listOf(id, name, category, color, photoFile ?: "")
+    fun serialise(): String = listOf(id, name, category, color, photoFile ?: "", design ?: "")
         .joinToString("|") { URLEncoder.encode(it, "UTF-8") }
 
     companion object {
         fun deserialise(value: String): ClothingItem? {
             val parts = value.split("|").map { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull() }
-            if (parts.size != 5 || parts.any { it == null }) return null
+            if (parts.size < 5 || parts.any { it == null }) return null
             return ClothingItem(
                 id = parts[0]!!, name = parts[1]!!, category = parts[2]!!,
                 color = parts[3]!!, photoFile = parts[4]!!.ifEmpty { null },
+                design = parts.getOrNull(5)?.ifEmpty { null },
             )
         }
     }

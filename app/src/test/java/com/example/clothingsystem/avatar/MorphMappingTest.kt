@@ -61,14 +61,18 @@ class MorphMappingTest {
         val values = Measurements(heightCm = 210f, weightKg = 40f).toControlValues()
         assertTrue(values.getValue("height") in 0f..1f)
         assertTrue(values.getValue("weight") in 0f..1f)
-        assertTrue(values.getValue("proportions") in 0f..1f)
+        assertTrue(values.getValue("chest") in 0f..1f)
+        assertTrue(values.getValue("waist") in 0f..1f)
+        assertTrue(values.getValue("hips") in 0f..1f)
+        assertTrue(values.getValue("shoulders") in 0f..1f)
     }
 
     private companion object {
         val FAKE_MORPHS = listOf(
             "gender_min", "gender_max", "age_min", "age_max", "muscle_min", "muscle_max",
-            "weight_min", "weight_max", "proportions_min", "proportions_max", "height_min",
-            "height_max", "cupsize_min", "cupsize_max", "firmness_min", "firmness_max",
+            "weight_min", "weight_max", "height_min", "height_max", "cupsize_min", "cupsize_max",
+            "firmness_min", "firmness_max", "chest_min", "chest_max", "waist_min", "waist_max",
+            "hips_min", "hips_max", "shoulders_min", "shoulders_max", "thighs_min", "thighs_max",
         )
     }
 }

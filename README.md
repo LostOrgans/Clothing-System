@@ -5,10 +5,16 @@ mannequin the user reshapes with sliders. Nothing else is in scope yet.
 
 ## What v1 does
 
-- Renders a realistic parametric human with Filament.
+- Renders a realistic, CC0-textured parametric human with Filament: fitted hair, eyes,
+  brows and lashes, with an opaque skin material.
 - The body is controlled **only by measurements** (height, weight, chest, waist, hips,
-  shoulders, age, muscle tone, firmness), mapped to the model's 24 morph targets. No raw sliders.
+  shoulders, age, muscle tone, firmness), mapped to explicit region morph targets. No raw sliders.
 - Live skin-tone presets tint the CC0 textured skin material.
+- Three CC0 fitted garments can be worn independently (Tops / Outerwear / Shoes); the
+  corresponding body geometry is hidden automatically. What is worn is saved across restarts.
+- An Outfits tab suggests colour-harmonised combinations from the wardrobe and saves them.
+- A Design tab previews and creates custom garments (T-shirt, jacket, trousers or shoes);
+  designed items are saved to the wardrobe and tint the fitted garment when worn.
 - The generator requires the CC0 `makehuman_system_assets` pack installed in MPFB.
 - Each frame clears the render target, so changing appearance leaves no ghost of the previous model.
 - One-finger drag orbits, pinch zooms.
@@ -80,5 +86,5 @@ with the Blender command above when the mesh changes.
 
 1. MakeHuman CC0 skin textures and more region targets
 2. Photo-based face, then photo-derived body
-3. Hair, eyes and clothes as fitted assets (experiments were discarded — they corrupted the UVs)
+3. A clothing designer for custom garments
 4. Rule-based outfit suggestions

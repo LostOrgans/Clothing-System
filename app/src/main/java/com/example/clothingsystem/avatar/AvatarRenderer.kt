@@ -1,10 +1,16 @@
 package com.example.clothingsystem.avatar
 
 import android.content.Context
+import com.google.android.filament.Box
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.View
+import com.google.android.filament.utils.Float3
 import com.google.android.filament.utils.ModelViewer
+import com.google.android.filament.utils.scale
+import com.google.android.filament.utils.translation
+import com.google.android.filament.utils.transpose
 import org.json.JSONObject
+import kotlin.math.pow
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -12,6 +18,16 @@ data class AvatarModel(val morphNames: List<String>, val defaultWeights: FloatAr
 
 object AvatarRenderer {
     private const val MODEL_PATH = "models/avatar.glb"
+    data class Garment(val node: String, val hideMorph: String)
+
+    private val garmentNodes = mapOf(
+        "Tops" to Garment("Garment_Casual", "hide_Casual"),
+        "Outerwear" to Garment("Garment_Elegant", "hide_Elegant"),
+        "Shoes" to Garment("Garment_Shoes", "hide_Shoes"),
+    )
+    private val baseTransforms = mutableMapOf<String, FloatArray>()
+
+    fun garmentFor(category: String): Garment? = garmentNodes[category]
 
     init {
         System.loadLibrary("filament-jni")
@@ -21,13 +37,14 @@ object AvatarRenderer {
 
     fun configure(viewer: ModelViewer) {
         viewer.view.blendMode = View.BlendMode.OPAQUE
-        viewer.cameraFocalLength = 75f
+        viewer.cameraFocalLength = 115f
         viewer.scene.indirectLight = IndirectLight.Builder()
             .irradiance(1, floatArrayOf(0.7f, 0.7f, 0.7f))
             .build(viewer.engine)
     }
 
     fun loadModel(viewer: ModelViewer, context: Context): AvatarModel? = try {
+        baseTransforms.clear()
         val bytes = context.assets.open(MODEL_PATH).use { it.readBytes() }
         val model = readMorphMetadata(bytes)
         val buffer = ByteBuffer.allocateDirect(bytes.size)
@@ -35,10 +52,32 @@ object AvatarRenderer {
             .put(bytes)
             .flip()
         viewer.loadModelGlb(buffer)
-        viewer.transformToUnitCube()
+        fitToBody(viewer)
         model
     } catch (e: Exception) {
         null
+    }
+
+    private fun fitToBody(viewer: ModelViewer) {
+        val asset = viewer.asset ?: return
+        val body = asset.getFirstEntityByName("Avatar")
+        val renderables = viewer.engine.renderableManager
+        if (body == 0 || !renderables.hasComponent(body)) {
+            viewer.transformToUnitCube()
+            return
+        }
+        val box = renderables.getAxisAlignedBoundingBox(renderables.getInstance(body), Box())
+        val center = Float3(box.center[0], box.center[1], box.center[2])
+        val halfExtent = Float3(box.halfExtent[0], box.halfExtent[1], box.halfExtent[2])
+        val scaleFactor = 2f / (2f * maxOf(halfExtent.x, halfExtent.y, halfExtent.z))
+        val target = Float3(0f, 0f, -4f)
+        val adjustedCenter = center - target / scaleFactor
+        val transform = scale(Float3(scaleFactor)) * translation(-adjustedCenter)
+        val transforms = viewer.engine.transformManager
+        transforms.setTransform(
+            transforms.getInstance(asset.root),
+            transpose(transform).toFloatArray(),
+        )
     }
 
     private fun readMorphMetadata(bytes: ByteArray): AvatarModel {
@@ -48,7 +87,18 @@ object AvatarRenderer {
             val type = ByteBuffer.wrap(bytes, offset + 4, 4).order(ByteOrder.LITTLE_ENDIAN).int
             if (type == 0x4E4F534A) {
                 val json = String(bytes, offset + 8, length, Charsets.UTF_8)
-                val mesh = JSONObject(json).getJSONArray("meshes").getJSONObject(0)
+                val meshes = JSONObject(json).getJSONArray("meshes")
+                // The body is the mesh with morph targets; accessory meshes come first when
+                // MPFB hair/eyes are present, so never assume index 0.
+                var mesh: JSONObject? = null
+                for (i in 0 until meshes.length()) {
+                    val candidate = meshes.getJSONObject(i)
+                    if (candidate.optJSONObject("extras")?.has("targetNames") == true) {
+                        mesh = candidate
+                        break
+                    }
+                }
+                if (mesh == null) return AvatarModel(emptyList(), floatArrayOf())
                 val names = mesh.getJSONObject("extras").getJSONArray("targetNames")
                 val weights = mesh.optJSONArray("weights")
                 return AvatarModel(
@@ -80,7 +130,53 @@ object AvatarRenderer {
         }
     }
 
-    fun applyWeights(viewer: ModelViewer, model: AvatarModel, config: AvatarConfig) {
+    fun applyGarments(viewer: ModelViewer, worn: List<com.example.clothingsystem.wardrobe.ClothingItem>) {
+        val asset = viewer.asset ?: return
+        val transforms = viewer.engine.transformManager
+        val renderables = viewer.engine.renderableManager
+        for ((category, garment) in garmentNodes) {
+            val node = garment.node
+            val entity = asset.getFirstEntityByName(node)
+            if (entity == 0) continue
+            val item = worn.lastOrNull { it.category == category }
+            val instance = transforms.getInstance(entity)
+            val base = baseTransforms.getOrPut(node) { transforms.getTransform(instance, FloatArray(16)) }
+            val scaled = base.copyOf()
+            val factor = if (item != null) 1f else 0.001f
+            for (index in intArrayOf(0, 1, 2, 4, 5, 6, 8, 9, 10)) scaled[index] *= factor
+            transforms.setTransform(instance, scaled)
+
+            if (item != null && renderables.hasComponent(entity)) {
+                val color = toLinear(com.example.clothingsystem.wardrobe.colorHex(item.color))
+                val renderable = renderables.getInstance(entity)
+                for (primitive in 0 until renderables.getPrimitiveCount(renderable)) {
+                    val material = renderables.getMaterialInstanceAt(renderable, primitive) ?: continue
+                    runCatching {
+                        material.setParameter("baseColorFactor", color[0], color[1], color[2])
+                    }
+                }
+            }
+        }
+    }
+
+    private fun toLinear(hex: Long): FloatArray {
+        fun channel(value: Int): Float {
+            val c = value / 255f
+            return if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).pow(2.4f)
+        }
+        return floatArrayOf(
+            channel(((hex shr 16) and 0xFF).toInt()),
+            channel(((hex shr 8) and 0xFF).toInt()),
+            channel((hex and 0xFF).toInt()),
+        )
+    }
+
+    fun applyWeights(
+        viewer: ModelViewer,
+        model: AvatarModel,
+        config: AvatarConfig,
+        activeGarments: Set<Garment> = emptySet(),
+    ) {
         val asset = viewer.asset ?: return
         val renderables = viewer.engine.renderableManager
         for (entity in asset.entities) {
@@ -90,7 +186,8 @@ object AvatarRenderer {
             if (count <= 0) continue
             val weights = FloatArray(count) { i ->
                 val name = model.morphNames.getOrNull(i) ?: return@FloatArray 0f
-                config.weight(name, model.defaultWeights.getOrNull(i) ?: 0f)
+                if (activeGarments.any { it.hideMorph == name }) 1f
+                else config.weight(name, model.defaultWeights.getOrNull(i) ?: 0f)
             }
             renderables.setMorphWeights(instance, weights, 0)
         }

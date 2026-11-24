@@ -17,6 +17,14 @@ private val Context.wardrobeDataStore: DataStore<Preferences> by preferencesData
 
 class WardrobeStore(private val context: Context) {
     private val itemsKey = stringPreferencesKey("items")
+    private val wornKey = stringPreferencesKey("worn")
+
+    suspend fun loadWorn(): List<String> =
+        context.wardrobeDataStore.data.first()[wornKey]?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+
+    suspend fun saveWorn(ids: List<String>) {
+        context.wardrobeDataStore.edit { it[wornKey] = ids.joinToString(",") }
+    }
 
     suspend fun load(): List<ClothingItem> {
         val raw = context.wardrobeDataStore.data.first()[itemsKey] ?: ""

@@ -16,6 +16,11 @@ object MorphMapping {
         "height" to "Height",
         "cupsize" to "Cup size",
         "firmness" to "Firmness",
+        "chest" to "Chest",
+        "waist" to "Waist",
+        "hips" to "Hips",
+        "shoulders" to "Shoulders",
+        "thighs" to "Thighs",
     )
 
     fun controls(names: List<String>): List<MorphControl> {
@@ -86,18 +91,16 @@ data class Measurements(
         fun norm(value: Float, min: Float, max: Float) = ((value - min) / (max - min)).coerceIn(0f, 1f)
         fun blend(a: Float, b: Float) = a * 0.75f + b * 0.25f
 
+        val mass = control(weightKg, 40f, 150f, 70f, 0.6f)
         return mapOf(
             "height" to control(heightCm, 140f, 210f, 170f, 0.35f),
-            "weight" to control(
-                blend(norm(weightKg, 40f, 150f), norm(waistCm, 55f, 140f)),
-                0f, 1f, blend(norm(70f, 40f, 150f), norm(85f, 55f, 140f)), 0.5f,
-            ),
-            "cupsize" to control(chestCm, 70f, 130f, 95f, 0.5f),
-            "proportions" to control(
-                blend(norm(hipsCm, 75f, 150f), norm(shoulderCm, 35f, 55f)),
-                0f, 1f, blend(norm(98f, 75f, 150f), norm(44f, 35f, 55f)), 0.5f,
-            ),
-            "muscle" to control(muscleTone, 0f, 10f, 5f, 0.4f),
+            "chest" to control(chestCm, 70f, 130f, 95f, 0.6f),
+            "waist" to control(waistCm, 55f, 140f, 85f, 0.6f),
+            "hips" to control(hipsCm, 75f, 150f, 98f, 0.6f),
+            "shoulders" to control(shoulderCm, 35f, 55f, 44f, 0.6f),
+            "thighs" to blend(mass, control(hipsCm, 75f, 150f, 98f, 0.3f)),
+            "weight" to mass,
+            "muscle" to control(muscleTone, 0f, 10f, 5f, 0.5f),
             "age" to control(ageYears, 5f, 90f, 30f, 0.5f),
             "firmness" to control(firmness, 0f, 10f, 5f, 0.4f),
         )
